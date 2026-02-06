@@ -89,6 +89,45 @@
                     </template>
                     {{ template "settings/panel/subscription/json" . }}
                   </a-tab-pane>
+                  <a-tab-pane key="6" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="cloud"></a-icon>
+                      <span>Cloudflare & DNS</span>
+                    </template>
+                    <a-collapse default-active-key="1">
+                      <a-collapse-panel key="1" header="Cloudflare API">
+                        <a-setting-list-item paddings="small">
+                          <template #title>Cloudflare API Token</template>
+                          <template #description>API token with DNS edit permissions. Get it from <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare Dashboard</a></template>
+                          <template #control>
+                            <a-input-password v-model="allSetting.cloudflareAPIToken" placeholder="Enter API token"></a-input-password>
+                          </template>
+                        </a-setting-list-item>
+                        <a-setting-list-item paddings="small">
+                          <template #title>Default Zone ID</template>
+                          <template #description>Default Cloudflare zone ID for quick operations (optional)</template>
+                          <template #control>
+                            <a-input v-model="allSetting.cloudflareZoneID" placeholder="Zone ID"></a-input>
+                          </template>
+                        </a-setting-list-item>
+                      </a-collapse-panel>
+                      <a-collapse-panel key="2" header="NextDNS">
+                        <a-setting-list-item paddings="small">
+                          <template #title>NextDNS Profile ID</template>
+                          <template #description>DNS-over-HTTPS profile for ad-blocking and privacy. Get it from <a href="https://my.nextdns.io" target="_blank">my.nextdns.io</a></template>
+                          <template #control>
+                            <a-input v-model="allSetting.nextDnsProfileId" placeholder="e.g. abc123"></a-input>
+                          </template>
+                        </a-setting-list-item>
+                      </a-collapse-panel>
+                      <a-collapse-panel key="3" header="Quick Help">
+                        <a-alert type="info" show-icon
+                          message="How to use Cloudflare & DNS"
+                          description="1. Get a Cloudflare API Token from your dashboard (DNS Edit permission). 2. Paste it above and save settings. 3. Go to Inbounds page → click Cloudflare button to manage DNS records. 4. For NextDNS: create a profile at my.nextdns.io and paste the profile ID. 5. Run Quick Setup from Inbounds page to auto-configure everything.">
+                        </a-alert>
+                      </a-collapse-panel>
+                    </a-collapse>
+                  </a-tab-pane>
                 </a-tabs>
               </a-col>
             </a-row>
@@ -236,6 +275,27 @@
     methods: {
       loading(spinning = true) {
         this.loadingStates.spinning = spinning;
+      },
+      openTgBot() {
+        const token = this.allSetting.tgBotToken;
+        if (!token) {
+          this.$message.warning('Please enter a bot token first');
+          return;
+        }
+        // Use Telegram's getMe API to find the bot username, then open it
+        const apiUrl = 'https://api.telegram.org/bot' + token + '/getMe';
+        fetch(apiUrl)
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok && data.result && data.result.username) {
+              window.open('https://t.me/' + data.result.username, '_blank');
+            } else {
+              this.$message.error('Invalid bot token. Please check and try again.');
+            }
+          })
+          .catch(() => {
+            this.$message.error('Could not connect to Telegram API. Check the token.');
+          });
       },
       _isIp(h) {
         if (typeof h !== "string") return false;

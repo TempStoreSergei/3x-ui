@@ -99,6 +99,11 @@ var defaultValueMap = map[string]string{
 	"ldapDefaultTotalGB":    "0",
 	"ldapDefaultExpiryDays": "0",
 	"ldapDefaultLimitIP":    "0",
+	// Cloudflare defaults
+	"cloudflareAPIToken": "",
+	"cloudflareZoneID":   "",
+	// NextDNS defaults
+	"nextDnsProfileId": "",
 }
 
 // SettingService provides business logic for application settings management.
@@ -675,6 +680,32 @@ func (s *SettingService) GetLdapDefaultExpiryDays() (int, error) {
 
 func (s *SettingService) GetLdapDefaultLimitIP() (int, error) {
 	return s.getInt("ldapDefaultLimitIP")
+}
+
+// Cloudflare settings
+func (s *SettingService) GetCloudflareAPIToken() (string, error) {
+	return s.getString("cloudflareAPIToken")
+}
+
+func (s *SettingService) SetCloudflareAPIToken(token string) error {
+	return s.setString("cloudflareAPIToken", token)
+}
+
+func (s *SettingService) GetCloudflareZoneID() (string, error) {
+	return s.getString("cloudflareZoneID")
+}
+
+func (s *SettingService) SetCloudflareZoneID(zoneID string) error {
+	return s.setString("cloudflareZoneID", zoneID)
+}
+
+// NextDNS settings
+func (s *SettingService) GetNextDNSProfileID() (string, error) {
+	return s.getString("nextDnsProfileId")
+}
+
+func (s *SettingService) SetNextDNSProfileID(profileID string) error {
+	return s.setString("nextDnsProfileId", profileID)
 }
 
 func (s *SettingService) UpdateAllSetting(allSetting *entity.AllSetting) error {

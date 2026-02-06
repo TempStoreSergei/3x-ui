@@ -1,0 +1,227 @@
+{{define "modals/generatorModal"}}
+<div id="gen-panel">
+    <!-- Quick Setup Section - shown inline as collapsible card -->
+    <a-card v-if="genPanel.visible" :style="{ marginBottom: '12px' }" size="small">
+        <template #title>
+            <a-space>
+                <a-icon type="thunderbolt" :style="{ color: '#722ed1' }"></a-icon>
+                <span>Quick Setup & Generator</span>
+            </a-space>
+        </template>
+        <template #extra>
+            <a-button size="small" icon="close" @click="genPanel.close()"></a-button>
+        </template>
+        <a-tabs v-model="genPanel.activeTab" size="small">
+            <a-tab-pane key="quicksetup" tab="⚡ Quick Setup">
+                <a-spin :spinning="genPanel.loading">
+                    <a-row :gutter="[16, 12]">
+                        <a-col :xs="24" :md="12">
+                            <a-card size="small" :bordered="false" :style="{ background: '#f6ffed', borderRadius: '8px' }">
+                                <h4 :style="{ margin: '0 0 8px', color: '#389e0d' }">
+                                    <a-icon type="rocket"></a-icon> One-Click Setup
+                                </h4>
+                                <p :style="{ fontSize: '12px', color: '#666', margin: '0 0 12px' }">
+                                    Generate optimized inbounds, configure anti-censorship DNS, and add Russia bypass routing — all in one click.
+                                </p>
+                                <a-space direction="vertical" :style="{ width: '100%' }">
+                                    <a-checkbox v-model="genPanel.quickOpts.generateInbounds">
+                                        Generate inbounds (VLESS Reality, VMess, SS, Trojan)
+                                    </a-checkbox>
+                                    <a-checkbox v-model="genPanel.quickOpts.configureDns">
+                                        Configure DNS (Cloudflare DoH + NextDNS)
+                                    </a-checkbox>
+                                    <a-checkbox v-model="genPanel.quickOpts.configureRouting">
+                                        Add Russian site bypass routing
+                                    </a-checkbox>
+                                </a-space>
+                                <a-popconfirm title="Apply all selected configurations?" @confirm="genPanel.quickSetup()" :style="{ marginTop: '12px' }">
+                                    <a-button type="primary" icon="rocket" block :loading="genPanel.loading" :style="{ marginTop: '12px' }">
+                                        ⚡ Run Quick Setup
+                                    </a-button>
+                                </a-popconfirm>
+                            </a-card>
+                        </a-col>
+                        <a-col :xs="24" :md="12">
+                            <template v-if="genPanel.quickResult">
+                                <a-alert :type="genPanel.quickResult.success ? 'success' : 'error'"
+                                    :message="genPanel.quickResult.success ? 'Setup Complete!' : 'Setup Failed'"
+                                    :description="genPanel.quickResult.message" show-icon>
+                                </a-alert>
+                            </template>
+                            <a-card v-else size="small" :bordered="false" :style="{ background: '#f0f5ff', borderRadius: '8px' }">
+                                <h4 :style="{ margin: '0 0 8px', color: '#1890ff' }">
+                                    <a-icon type="info-circle"></a-icon> What happens
+                                </h4>
+                                <ul :style="{ fontSize: '12px', paddingLeft: '16px', margin: 0, color: '#555' }">
+                                    <li>10 diverse inbound configs are created</li>
+                                    <li>Cloudflare DoH + NextDNS configured</li>
+                                    <li>Russian sites go direct (bypass proxy)</li>
+                                    <li>Ad/tracker domains blocked</li>
+                                    <li>Each client gets a single subscription URL</li>
+                                </ul>
+                            </a-card>
+                        </a-col>
+                    </a-row>
+                </a-spin>
+            </a-tab-pane>
+            <a-tab-pane key="generate" tab="Generate Inbounds">
+                <a-spin :spinning="genPanel.loading">
+                    <a-row :gutter="[16, 12]">
+                        <a-col :span="24">
+                            <a-space :style="{ marginBottom: '8px' }">
+                                <a-button type="primary" icon="eye" @click="genPanel.preview()">
+                                    Preview
+                                </a-button>
+                                <a-popconfirm title="Create these inbounds?" @confirm="genPanel.generate()"
+                                    v-if="genPanel.previewData.length > 0">
+                                    <a-button type="danger" icon="thunderbolt">
+                                        Apply [[ genPanel.previewData.length ]] Inbounds
+                                    </a-button>
+                                </a-popconfirm>
+                            </a-space>
+                        </a-col>
+                        <a-col :span="24" v-if="genPanel.previewData.length > 0">
+                            <a-table :columns="genPanel.previewColumns" :data-source="genPanel.previewData"
+                                :pagination="false" size="small" row-key="remark" bordered>
+                                <template slot="port" slot-scope="text">
+                                    <a-tag color="blue">[[ text ]]</a-tag>
+                                </template>
+                                <template slot="protocol" slot-scope="text">
+                                    <a-tag :color="text === 'vless' ? 'green' : text === 'vmess' ? 'purple' : text === 'trojan' ? 'orange' : 'cyan'">
+                                        [[ text ]]
+                                    </a-tag>
+                                </template>
+                            </a-table>
+                        </a-col>
+                    </a-row>
+                </a-spin>
+            </a-tab-pane>
+            <a-tab-pane key="domains" tab="SNI Domains">
+                <a-spin :spinning="genPanel.loading">
+                    <a-row :gutter="[16, 8]">
+                        <a-col :xs="24" :md="12">
+                            <a-input-search v-model="genPanel.newDomain" placeholder="Add domain (e.g. www.google.com)"
+                                enter-button="Add" @search="genPanel.addDomain()">
+                            </a-input-search>
+                        </a-col>
+                        <a-col :xs="12" :md="6">
+                            <a-button icon="reload" @click="genPanel.seedDomains()" block>Seed Defaults</a-button>
+                        </a-col>
+                        <a-col :xs="12" :md="6">
+                            <a-popconfirm title="Delete ALL domains?" @confirm="genPanel.deleteAllDomains()">
+                                <a-button type="danger" block>Clear All</a-button>
+                            </a-popconfirm>
+                        </a-col>
+                        <a-col :span="24">
+                            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }">
+                                <a-tag v-for="item in genPanel.domains" :key="item.id" closable @close="genPanel.deleteDomain(item.id)">
+                                    [[ item.name ]]
+                                </a-tag>
+                                <a-tag v-if="genPanel.domains.length === 0" color="orange">No domains — click "Seed Defaults" to add</a-tag>
+                            </div>
+                        </a-col>
+                    </a-row>
+                </a-spin>
+            </a-tab-pane>
+        </a-tabs>
+    </a-card>
+</div>
+<script>
+    const genPanel = {
+        visible: false,
+        loading: false,
+        activeTab: 'quicksetup',
+        previewData: [],
+        domains: [],
+        newDomain: '',
+        quickResult: null,
+        quickOpts: {
+            generateInbounds: true,
+            configureDns: true,
+            configureRouting: true,
+        },
+        previewColumns: [
+            { title: 'Remark', dataIndex: 'remark' },
+            { title: 'Protocol', dataIndex: 'protocol', scopedSlots: { customRender: 'protocol' }, width: 100 },
+            { title: 'Port', dataIndex: 'port', scopedSlots: { customRender: 'port' }, width: 80 },
+        ],
+        show() {
+            this.visible = true;
+            this.quickResult = null;
+            this.previewData = [];
+            this.loadDomains();
+        },
+        close() { this.visible = false; },
+        async preview() {
+            this.loading = true;
+            const msg = await HttpUtil.post('/panel/api/generator/preview');
+            this.loading = false;
+            if (msg.success) {
+                this.previewData = msg.obj || [];
+            }
+        },
+        async generate() {
+            this.loading = true;
+            const msg = await HttpUtil.post('/panel/api/generator/generate');
+            this.loading = false;
+            if (msg.success) {
+                Vue.prototype.$message.success('Generated ' + (msg.obj ? msg.obj.length : 0) + ' inbounds!');
+                if (typeof app !== 'undefined' && typeof app.getDBInbounds === 'function') {
+                    app.getDBInbounds();
+                }
+                this.previewData = [];
+            }
+        },
+        async quickSetup() {
+            this.loading = true;
+            this.quickResult = null;
+            const msg = await HttpUtil.post('/panel/api/generator/quicksetup', this.quickOpts);
+            this.loading = false;
+            if (msg.success) {
+                this.quickResult = { success: true, message: msg.obj || 'Setup completed!' };
+                if (typeof app !== 'undefined' && typeof app.getDBInbounds === 'function') {
+                    app.getDBInbounds();
+                }
+            } else {
+                this.quickResult = { success: false, message: msg.msg || 'Setup failed' };
+            }
+        },
+        async loadDomains() {
+            const msg = await HttpUtil.get('/panel/api/generator/domains');
+            if (msg.success) this.domains = msg.obj || [];
+        },
+        async addDomain() {
+            if (!this.newDomain) return;
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/add', { name: this.newDomain });
+            this.newDomain = '';
+            this.loading = false;
+            this.loadDomains();
+        },
+        async deleteDomain(id) {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/delete/' + id);
+            this.loading = false;
+            this.loadDomains();
+        },
+        async deleteAllDomains() {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/deleteAll');
+            this.loading = false;
+            this.loadDomains();
+        },
+        async seedDomains() {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/seed');
+            this.loading = false;
+            this.loadDomains();
+        }
+    };
+
+    new Vue({
+        delimiters: ['[[', ']]'],
+        el: '#gen-panel',
+        data: { genPanel },
+    });
+</script>
+{{end}}

@@ -104,6 +104,13 @@ type AllSetting struct {
 	LdapDefaultExpiryDays int    `json:"ldapDefaultExpiryDays" form:"ldapDefaultExpiryDays"`
 	LdapDefaultLimitIP    int    `json:"ldapDefaultLimitIP" form:"ldapDefaultLimitIP"`
 	// JSON subscription routing rules
+
+	// Cloudflare settings
+	CloudflareAPIToken string `json:"cloudflareAPIToken" form:"cloudflareAPIToken"` // Cloudflare API token for DNS management
+	CloudflareZoneID   string `json:"cloudflareZoneID" form:"cloudflareZoneID"`     // Default Cloudflare zone ID
+
+	// NextDNS settings
+	NextDNSProfileID string `json:"nextDnsProfileId" form:"nextDnsProfileId"` // NextDNS profile ID (e.g. abc123)
 }
 
 // CheckValid validates all settings in the AllSetting struct, checking IP addresses, ports, SSL certificates, and other configuration values.

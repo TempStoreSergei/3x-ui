@@ -1,5 +1,28 @@
 {{define "settings/panel/telegram"}}
 <a-collapse default-active-key="1">
+    <a-collapse-panel key="0" header="⚡ Quick Connect">
+        <a-alert type="info" :style="{ marginBottom: '12px' }" show-icon
+            message="Quick Telegram Setup"
+            description="1. Create a bot via @BotFather in Telegram. 2. Paste the token below. 3. Click 'Open Bot' to start chatting with your bot. 4. Send /start, then copy your Chat ID. 5. Save settings and enable the bot.">
+        </a-alert>
+        <a-space direction="vertical" :style="{ width: '100%' }">
+            <a-input-search v-model="allSetting.tgBotToken" placeholder="Paste bot token from @BotFather"
+                enter-button="Open Bot" @search="openTgBot">
+            </a-input-search>
+            <a-row :gutter="8">
+                <a-col :span="12">
+                    <a-button type="primary" block @click="window.open('https://t.me/BotFather', '_blank')">
+                        <a-icon type="robot"></a-icon> Open @BotFather
+                    </a-button>
+                </a-col>
+                <a-col :span="12">
+                    <a-button block @click="openTgBot" :disabled="!allSetting.tgBotToken">
+                        <a-icon type="message"></a-icon> Open My Bot
+                    </a-button>
+                </a-col>
+            </a-row>
+        </a-space>
+    </a-collapse-panel>
     <a-collapse-panel key="1" header='{{ i18n "pages.xray.generalConfigs"}}'>
         <a-setting-list-item paddings="small">
             <template #title>{{ i18n "pages.settings.telegramBotEnable" }}</template>

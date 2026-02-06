@@ -12,9 +12,11 @@ import (
 // APIController handles the main API routes for the 3x-ui panel, including inbounds and server management.
 type APIController struct {
 	BaseController
-	inboundController *InboundController
-	serverController  *ServerController
-	Tgbot             service.Tgbot
+	inboundController    *InboundController
+	serverController     *ServerController
+	cloudflareController *CloudflareController
+	generatorController  *GeneratorController
+	Tgbot                service.Tgbot
 }
 
 // NewAPIController creates a new APIController instance and initializes its routes.
@@ -47,6 +49,14 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// Server API
 	server := api.Group("/server")
 	a.serverController = NewServerController(server)
+
+	// Cloudflare API
+	cloudflare := api.Group("/cloudflare")
+	a.cloudflareController = NewCloudflareController(cloudflare)
+
+	// Generator API
+	generator := api.Group("/generator")
+	a.generatorController = NewGeneratorController(generator)
 
 	// Extra routes
 	api.GET("/backuptotgbot", a.BackuptoTgbot)

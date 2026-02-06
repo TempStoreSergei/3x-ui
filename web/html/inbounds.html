@@ -99,44 +99,68 @@
                 </a-row>
               </a-card>
             </a-col>
+            <!-- Inline panels (no more modals!) -->
+            {{template "modals/generatorModal"}}
+            {{template "modals/cloudflareModal"}}
             <a-col>
               <a-card hoverable>
                 <template #title>
                   <a-space direction="horizontal">
-                    <a-button type="primary" icon="plus" @click="openAddInbound">
-                      <template v-if="!isMobile">{{ i18n "pages.inbounds.addInbound" }}</template>
-                    </a-button>
-                    <a-dropdown :trigger="['click']">
-                      <a-button type="primary" icon="menu">
-                        <template v-if="!isMobile">{{ i18n "pages.inbounds.generalActions" }}</template>
+                    <template v-if="isSimpleMode">
+                      <a-button type="primary" icon="thunderbolt" @click="genPanel.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
+                        <template v-if="!isMobile">⚡ Quick Setup</template>
                       </a-button>
-                      <a-menu slot="overlay" @click="a => generalActions(a)" :theme="themeSwitcher.currentTheme">
-                        <a-menu-item key="import">
-                          <a-icon type="import"></a-icon>
-                          {{ i18n "pages.inbounds.importInbound" }}
-                        </a-menu-item>
-                        <a-menu-item key="export">
-                          <a-icon type="export"></a-icon>
-                          {{ i18n "pages.inbounds.export" }}
-                        </a-menu-item>
-                        <a-menu-item key="subs" v-if="subSettings.enable">
-                          <a-icon type="export"></a-icon>
-                          {{ i18n "pages.inbounds.export" }} - {{ i18n "pages.settings.subSettings" }}
-                        </a-menu-item>
-                        <a-menu-item key="resetInbounds">
-                          <a-icon type="reload"></a-icon>
-                          {{ i18n "pages.inbounds.resetAllTraffic" }}
-                        </a-menu-item>
-                        <a-menu-item key="resetClients">
-                          <a-icon type="file-done"></a-icon>
-                          {{ i18n "pages.inbounds.resetAllClientTraffics" }}
-                        </a-menu-item>
-                        <a-menu-item key="delDepletedClients" :style="{ color: '#FF4D4F' }">
-                          <a-icon type="rest"></a-icon>
-                          {{ i18n "pages.inbounds.delDepletedClients" }}
-                        </a-menu-item>
-                      </a-menu>
-                    </a-dropdown>
+                      <a-button icon="cloud" @click="cfPanel.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
+                        <template v-if="!isMobile">Cloudflare</template>
+                      </a-button>
+                    </template>
+                    <template v-else>
+                      <a-button type="primary" icon="plus" @click="openAddInbound">
+                        <template v-if="!isMobile">{{ i18n "pages.inbounds.addInbound" }}</template>
+                      </a-button>
+                      <a-button icon="thunderbolt" @click="genPanel.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
+                        <template v-if="!isMobile">Auto Generate</template>
+                      </a-button>
+                      <a-button icon="cloud" @click="cfPanel.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
+                        <template v-if="!isMobile">Cloudflare</template>
+                      </a-button>
+                      <a-dropdown :trigger="['click']">
+                        <a-button type="primary" icon="menu">
+                          <template v-if="!isMobile">{{ i18n "pages.inbounds.generalActions" }}</template>
+                        </a-button>
+                        <a-menu slot="overlay" @click="a => generalActions(a)" :theme="themeSwitcher.currentTheme">
+                          <a-menu-item key="import">
+                            <a-icon type="import"></a-icon>
+                            {{ i18n "pages.inbounds.importInbound" }}
+                          </a-menu-item>
+                          <a-menu-item key="export">
+                            <a-icon type="export"></a-icon>
+                            {{ i18n "pages.inbounds.export" }}
+                          </a-menu-item>
+                          <a-menu-item key="subs" v-if="subSettings.enable">
+                            <a-icon type="export"></a-icon>
+                            {{ i18n "pages.inbounds.export" }} - {{ i18n "pages.settings.subSettings" }}
+                          </a-menu-item>
+                          <a-menu-item key="resetInbounds">
+                            <a-icon type="reload"></a-icon>
+                            {{ i18n "pages.inbounds.resetAllTraffic" }}
+                          </a-menu-item>
+                          <a-menu-item key="resetClients">
+                            <a-icon type="file-done"></a-icon>
+                            {{ i18n "pages.inbounds.resetAllClientTraffics" }}
+                          </a-menu-item>
+                          <a-menu-item key="delDepletedClients" :style="{ color: '#FF4D4F' }">
+                            <a-icon type="rest"></a-icon>
+                            {{ i18n "pages.inbounds.delDepletedClients" }}
+                          </a-menu-item>
+                        </a-menu>
+                      </a-dropdown>
+                    </template>
+                    <a-tooltip :title="isSimpleMode ? 'Switch to Advanced Mode' : 'Switch to Simple Mode'">
+                      <a-button :icon="isSimpleMode ? 'tool' : 'user'" @click="toggleMode">
+                        <template v-if="!isMobile">[[ isSimpleMode ? 'Advanced' : 'Simple' ]]</template>
+                      </a-button>
+                    </a-tooltip>
                   </a-space>
                 </template>
                 <template #extra>
@@ -741,10 +765,36 @@
       showAlert: false,
       ipLimitEnable: false,
       pageSize: 0,
+      isSimpleMode: localStorage.getItem("uiMode") === "simple",
     },
     methods: {
       loading(spinning = true) {
         this.loadingStates.spinning = spinning;
+      },
+      toggleMode() {
+        this.isSimpleMode = !this.isSimpleMode;
+        localStorage.setItem("uiMode", this.isSimpleMode ? "simple" : "advanced");
+      },
+      copySubLink(client) {
+        if (!client.subId || !this.subSettings.subURI) {
+          this.$message.warning('Subscription not configured. Enable it in Settings → Subscription.');
+          return;
+        }
+        const link = this.subSettings.subURI + client.subId;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(link).then(() => {
+            this.$message.success('Subscription link copied!');
+          });
+        } else {
+          // Fallback
+          const el = document.createElement('textarea');
+          el.value = link;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          this.$message.success('Subscription link copied!');
+        }
       },
       async getDBInbounds() {
         this.refreshing = true;

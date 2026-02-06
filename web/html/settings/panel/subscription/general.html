@@ -135,11 +135,15 @@
     <a-collapse-panel key="4" header='{{ i18n "pages.settings.intervals"}}'>
         <a-setting-list-item paddings="small">
             <template #title>{{ i18n "pages.settings.subUpdates"}}</template>
-            <template #description>{{ i18n "pages.settings.subUpdatesDesc"}}</template>
+            <template #description>{{ i18n "pages.settings.subUpdatesDesc"}} (Recommended: 60 minutes for optimal freshness)</template>
             <template #control>
                 <a-input-number :min="1" v-model="allSetting.subUpdates" :style="{ width: '100%' }"></a-input-number>
             </template>
         </a-setting-list-item>
+        <a-alert type="info" :style="{ marginTop: '8px' }" show-icon
+            message="Update Interval"
+            description="This controls how often VPN clients refresh their subscription. Lower values (e.g. 60 min) keep configs fresh. Higher values (e.g. 1440 min = 24h) reduce server load. Set to match your inbound rotation interval.">
+        </a-alert>
     </a-collapse-panel>
 </a-collapse>
 {{end}}
