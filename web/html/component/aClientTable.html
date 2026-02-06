@@ -4,6 +4,10 @@
     <template slot="title">{{ i18n "qrCode" }}</template>
     <a-icon :style="{ fontSize: '22px', marginInlineStart: '14px' }" class="normal-icon" type="qrcode" v-if="record.hasLink()" @click="showQrcode(record.id,client);"></a-icon>
   </a-tooltip>
+  <a-tooltip v-if="subSettings.enable && client.subId">
+    <template slot="title">Copy subscription link</template>
+    <a-icon :style="{ fontSize: '22px', cursor: 'pointer', color: '#1890ff' }" type="link" @click="copySubLink(client)"></a-icon>
+  </a-tooltip>
   <a-tooltip>
     <template slot="title">{{ i18n "pages.client.edit" }}</template>
     <a-icon :style="{ fontSize: '22px' }" class="normal-icon" type="edit" @click="openEditClient(record.id,client);"></a-icon>
@@ -57,6 +61,14 @@
     </a-tooltip>
     <a-space direction="vertical" :size="2">
       <span class="client-email">[[ client.email ]]</span>
+      <template v-if="subSettings.enable && client.subId">
+        <a-tooltip :overlay-class-name="themeSwitcher.currentTheme">
+          <template slot="title">Click to copy subscription link</template>
+          <a-tag color="blue" :style="{ cursor: 'pointer', fontSize: '10px', margin: 0 }" @click="copySubLink(client)">
+            <a-icon type="link"></a-icon> Sub
+          </a-tag>
+        </a-tooltip>
+      </template>
       <template v-if="client.comment && client.comment.trim()">
         <a-tooltip v-if="client.comment.length > 50" :overlay-class-name="themeSwitcher.currentTheme">
           <template slot="title">

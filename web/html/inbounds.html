@@ -775,6 +775,27 @@
         this.isSimpleMode = !this.isSimpleMode;
         localStorage.setItem("uiMode", this.isSimpleMode ? "simple" : "advanced");
       },
+      copySubLink(client) {
+        if (!client.subId || !this.subSettings.subURI) {
+          this.$message.warning('Subscription not configured. Enable it in Settings → Subscription.');
+          return;
+        }
+        const link = this.subSettings.subURI + client.subId;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(link).then(() => {
+            this.$message.success('Subscription link copied!');
+          });
+        } else {
+          // Fallback
+          const el = document.createElement('textarea');
+          el.value = link;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          this.$message.success('Subscription link copied!');
+        }
+      },
       async getDBInbounds() {
         this.refreshing = true;
         const msg = await HttpUtil.get('/panel/api/inbounds/list');
