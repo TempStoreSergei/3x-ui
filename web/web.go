@@ -43,6 +43,9 @@ var htmlFS embed.FS
 //go:embed translation/*
 var i18nFS embed.FS
 
+//go:embed dist/*
+var distFS embed.FS
+
 var startTime = time.Now()
 
 type wrapAssetsFS struct {
@@ -89,6 +92,25 @@ func EmbeddedHTML() embed.FS {
 // EmbeddedAssets returns the embedded assets filesystem for reuse by other servers.
 func EmbeddedAssets() embed.FS {
 	return assetsFS
+}
+
+// serveSPA serves the Vue 3 SPA index.html for client-side routing.
+func (s *Server) serveSPA(c *gin.Context) {
+	var indexHTML []byte
+	var err error
+
+	if config.IsDebug() {
+		indexHTML, err = os.ReadFile("web/dist/index.html")
+	} else {
+		indexHTML, err = distFS.ReadFile("dist/index.html")
+	}
+
+	if err != nil {
+		c.String(http.StatusNotFound, "Vue SPA not built. Run: cd frontend && npm run build")
+		return
+	}
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
 }
 
 // Server represents the main web server for the 3x-ui panel with controllers, services, and scheduled jobs.
@@ -251,6 +273,8 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		// Use the registered func map with the loaded templates
 		engine.LoadHTMLFiles(files...)
 		engine.StaticFS(basePath+"assets", http.FS(os.DirFS("web/assets")))
+		// Vue SPA static assets in dev mode
+		engine.StaticFS(basePath+"dist", http.FS(os.DirFS("web/dist")))
 	} else {
 		// for production
 		template, err := s.getHtmlTemplate(funcMap)
@@ -259,6 +283,9 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		}
 		engine.SetHTMLTemplate(template)
 		engine.StaticFS(basePath+"assets", http.FS(&wrapAssetsFS{FS: assetsFS}))
+		// Serve Vue SPA built assets from embedded dist/
+		distSubFS, _ := fs.Sub(distFS, "dist")
+		engine.StaticFS(basePath+"dist", http.FS(distSubFS))
 	}
 
 	// Apply the redirect middleware (`/xui` to `/panel`)
@@ -278,6 +305,10 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	s.ws = controller.NewWebSocketController(s.wsHub)
 	// Register WebSocket route with basePath (g already has basePath prefix)
 	g.GET("/ws", s.ws.HandleWebSocket)
+
+	// Serve Vue 3 SPA for panel UI
+	g.GET("/panel/vue", s.serveSPA)
+	g.GET("/panel/vue/*path", s.serveSPA)
 
 	// Chrome DevTools endpoint for debugging web apps
 	engine.GET("/.well-known/appspecific/com.chrome.devtools.json", func(c *gin.Context) {

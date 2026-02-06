@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
-  base: './',
+  base: '/dist/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
@@ -16,7 +16,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/panel/api/': {
+      '/panel/api': {
         target: 'http://localhost:2053',
         changeOrigin: true
       },
