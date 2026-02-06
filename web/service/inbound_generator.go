@@ -427,3 +427,151 @@ func (s *InboundGeneratorService) GenerateAndApplyInbounds(userID int) ([]*model
 	logger.Infof("Generated and applied %d inbounds", len(created))
 	return created, nil
 }
+
+// QuickSetup performs one-click setup: generates inbounds, configures DNS, and sets up routing.
+func (s *InboundGeneratorService) QuickSetup(userID int, generateInbounds, configureDns, configureRouting bool) (string, error) {
+	var results []string
+	var xraySettingService XraySettingService
+
+	if generateInbounds {
+		created, err := s.GenerateAndApplyInbounds(userID)
+		if err != nil {
+			return "", fmt.Errorf("failed to generate inbounds: %w", err)
+		}
+		results = append(results, fmt.Sprintf("Generated %d inbounds", len(created)))
+	}
+
+	if configureDns || configureRouting {
+		configStr, err := s.SettingService.GetXrayConfigTemplate()
+		if err != nil {
+			return "", fmt.Errorf("failed to get xray config: %w", err)
+		}
+
+		var config map[string]any
+		if err := json.Unmarshal([]byte(configStr), &config); err != nil {
+			return "", fmt.Errorf("failed to parse xray config: %w", err)
+		}
+
+		if configureDns {
+			nextDnsID, _ := s.SettingService.GetNextDNSProfileID()
+			config["dns"] = buildAntiCensorshipDNS(nextDnsID)
+			results = append(results, "Configured anti-censorship DNS (Cloudflare DoH + NextDNS)")
+		}
+
+		if configureRouting {
+			routing, ok := config["routing"].(map[string]any)
+			if !ok {
+				routing = map[string]any{}
+			}
+			routing["domainStrategy"] = "IPIfNonMatch"
+			rules, ok := routing["rules"].([]any)
+			if !ok {
+				rules = []any{}
+			}
+			rules = appendRussiaBypassRules(rules)
+			routing["rules"] = rules
+			config["routing"] = routing
+			results = append(results, "Added Russian site bypass routing rules")
+		}
+
+		newConfig, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("failed to serialize config: %w", err)
+		}
+		if err := xraySettingService.SaveXraySetting(string(newConfig)); err != nil {
+			return "", fmt.Errorf("failed to save xray config: %w", err)
+		}
+	}
+
+	return strings.Join(results, "; "), nil
+}
+
+// buildAntiCensorshipDNS creates DNS config optimized for Russia with DoH.
+func buildAntiCensorshipDNS(nextDnsProfileID string) map[string]any {
+	servers := []any{
+		map[string]any{
+			"address":  "https://1.1.1.1/dns-query",
+			"domains":  []string{},
+			"skipFallback": false,
+		},
+		map[string]any{
+			"address":  "https://8.8.8.8/dns-query",
+			"domains":  []string{},
+			"skipFallback": false,
+		},
+	}
+
+	if nextDnsProfileID != "" {
+		servers = append([]any{
+			map[string]any{
+				"address":      fmt.Sprintf("https://dns.nextdns.io/%s", nextDnsProfileID),
+				"domains":      []string{},
+				"skipFallback": false,
+			},
+		}, servers...)
+	}
+
+	// Add direct DNS for Russian domains
+	servers = append(servers, map[string]any{
+		"address": "localhost",
+		"domains": []string{
+			"geosite:category-ru",
+		},
+		"skipFallback": true,
+	})
+
+	return map[string]any{
+		"servers": servers,
+		"queryStrategy": "UseIP",
+		"tag":           "dns_inbound",
+	}
+}
+
+// appendRussiaBypassRules adds routing rules optimized for Russian censorship bypass.
+func appendRussiaBypassRules(existingRules []any) []any {
+	// Check if rules already exist to avoid duplicates
+	for _, r := range existingRules {
+		rule, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		if tag, _ := rule["outboundTag"].(string); tag == "direct" {
+			if domains, ok := rule["domain"].([]any); ok {
+				for _, d := range domains {
+					if ds, ok := d.(string); ok && ds == "geosite:category-ru" {
+						return existingRules // Already configured
+					}
+				}
+			}
+		}
+	}
+
+	newRules := []any{
+		// Direct access for Russian domains (no proxy needed for domestic sites)
+		map[string]any{
+			"type":        "field",
+			"outboundTag": "direct",
+			"domain": []string{
+				"geosite:category-ru",
+			},
+		},
+		// Direct access for Russian IPs
+		map[string]any{
+			"type":        "field",
+			"outboundTag": "direct",
+			"ip": []string{
+				"geoip:ru",
+			},
+		},
+		// Block ads and trackers
+		map[string]any{
+			"type":        "field",
+			"outboundTag": "blocked",
+			"domain": []string{
+				"geosite:category-ads-all",
+			},
+		},
+	}
+
+	return append(existingRules, newRules...)
+}

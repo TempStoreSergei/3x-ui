@@ -28,6 +28,7 @@ func NewGeneratorController(g *gin.RouterGroup) *GeneratorController {
 func (a *GeneratorController) initRouter(g *gin.RouterGroup) {
 	g.POST("/generate", a.generateInbounds)
 	g.POST("/preview", a.previewInbounds)
+	g.POST("/quicksetup", a.quickSetup)
 	g.GET("/domains", a.listDomains)
 	g.POST("/domains/add", a.addDomain)
 	g.POST("/domains/addBulk", a.addDomainsBulk)
@@ -67,10 +68,10 @@ func (a *GeneratorController) listDomains(c *gin.Context) {
 
 func (a *GeneratorController) addDomain(c *gin.Context) {
 	type req struct {
-		Name string `json:"name"`
+		Name string `json:"name" form:"name"`
 	}
 	var r req
-	if err := c.ShouldBindJSON(&r); err != nil {
+	if err := c.ShouldBind(&r); err != nil {
 		jsonMsg(c, "Invalid request", err)
 		return
 	}
@@ -84,10 +85,10 @@ func (a *GeneratorController) addDomain(c *gin.Context) {
 
 func (a *GeneratorController) addDomainsBulk(c *gin.Context) {
 	type req struct {
-		Names string `json:"names"`
+		Names string `json:"names" form:"names"`
 	}
 	var r req
-	if err := c.ShouldBindJSON(&r); err != nil {
+	if err := c.ShouldBind(&r); err != nil {
 		jsonMsg(c, "Invalid request", err)
 		return
 	}
@@ -130,4 +131,23 @@ func (a *GeneratorController) seedDomains(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, "Default domains seeded successfully", nil)
+}
+
+func (a *GeneratorController) quickSetup(c *gin.Context) {
+	type quickSetupReq struct {
+		GenerateInbounds bool `form:"generateInbounds"`
+		ConfigureDns     bool `form:"configureDns"`
+		ConfigureRouting bool `form:"configureRouting"`
+	}
+	var req quickSetupReq
+	_ = c.ShouldBind(&req)
+
+	user := session.GetLoginUser(c)
+	result, err := a.generatorService.QuickSetup(user.Id, req.GenerateInbounds, req.ConfigureDns, req.ConfigureRouting)
+	if err != nil {
+		jsonMsg(c, "Quick setup failed", err)
+		return
+	}
+	a.xrayService.SetToNeedRestart()
+	jsonObj(c, result, nil)
 }

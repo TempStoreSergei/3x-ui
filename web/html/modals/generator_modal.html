@@ -7,10 +7,10 @@
         <a-tabs default-active-key="generate">
             <a-tab-pane key="generate" tab="Generate">
                 <a-alert type="info" :style="{ marginBottom: '10px' }"
-                    message="Generate 10 diverse inbound configurations with different protocols (VLESS, VMess, Shadowsocks, Trojan), transports (TCP, WebSocket, gRPC, XHTTP), and random ports/SNI domains." show-icon>
+                    message="Auto-generate optimized inbound configs (VLESS Reality, VMess, Shadowsocks, Trojan) with anti-censorship settings for Russia. One click creates everything you need." show-icon>
                 </a-alert>
                 <a-space direction="vertical" :style="{ width: '100%' }">
-                    <a-button type="primary" icon="eye" @click="genModal.preview" block>
+                    <a-button type="primary" icon="eye" @click="genModal.preview()" block>
                         Preview Inbounds
                     </a-button>
                     <template v-if="genModal.previewData.length > 0">
@@ -26,12 +26,44 @@
                             </template>
                         </a-table>
                     </template>
-                    <a-popconfirm title="This will create 10 new inbounds. Continue?"
-                        @confirm="genModal.generate">
+                    <a-popconfirm title="This will create new inbounds with optimized settings. Continue?"
+                        @confirm="genModal.generate()">
                         <a-button type="danger" icon="thunderbolt" block :disabled="genModal.previewData.length === 0">
                             Generate & Apply Inbounds
                         </a-button>
                     </a-popconfirm>
+                </a-space>
+            </a-tab-pane>
+            <a-tab-pane key="quicksetup" tab="⚡ Quick Setup">
+                <a-alert type="success" :style="{ marginBottom: '10px' }"
+                    message="One-click setup: generates optimized inbounds, configures anti-censorship DNS routing, and prepares everything for immediate use." show-icon>
+                </a-alert>
+                <a-space direction="vertical" :style="{ width: '100%' }">
+                    <a-card size="small" title="Quick Setup Options">
+                        <a-row :gutter="[8,8]">
+                            <a-col :span="24">
+                                <a-checkbox v-model="genModal.quickOpts.generateInbounds">Generate optimized inbounds (VLESS Reality, VMess, SS, Trojan)</a-checkbox>
+                            </a-col>
+                            <a-col :span="24">
+                                <a-checkbox v-model="genModal.quickOpts.configureDns">Configure anti-censorship DNS (Cloudflare DoH + NextDNS)</a-checkbox>
+                            </a-col>
+                            <a-col :span="24">
+                                <a-checkbox v-model="genModal.quickOpts.configureRouting">Add Russian site bypass routing rules</a-checkbox>
+                            </a-col>
+                        </a-row>
+                    </a-card>
+                    <a-popconfirm title="Apply all selected configurations?"
+                        @confirm="genModal.quickSetup()">
+                        <a-button type="primary" icon="rocket" block size="large"
+                            :loading="genModal.loading">
+                            ⚡ One-Click Setup
+                        </a-button>
+                    </a-popconfirm>
+                    <template v-if="genModal.quickResult">
+                        <a-alert :type="genModal.quickResult.success ? 'success' : 'error'" :style="{ marginTop: '10px' }"
+                            :message="genModal.quickResult.message" show-icon>
+                        </a-alert>
+                    </template>
                 </a-space>
             </a-tab-pane>
             <a-tab-pane key="domains" tab="SNI Domains">
@@ -42,19 +74,19 @@
                     <a-row :gutter="8">
                         <a-col :span="16">
                             <a-input v-model="genModal.newDomain" placeholder="Enter domain (e.g. www.google.com)"
-                                @pressEnter="genModal.addDomain"></a-input>
+                                @pressEnter="genModal.addDomain()"></a-input>
                         </a-col>
                         <a-col :span="4">
-                            <a-button type="primary" icon="plus" @click="genModal.addDomain" block>Add</a-button>
+                            <a-button type="primary" icon="plus" @click="genModal.addDomain()" block>Add</a-button>
                         </a-col>
                         <a-col :span="4">
-                            <a-button icon="reload" @click="genModal.seedDomains" block>Seed</a-button>
+                            <a-button icon="reload" @click="genModal.seedDomains()" block>Seed</a-button>
                         </a-col>
                     </a-row>
                 </a-card>
                 <a-card size="small" title="Bulk Add Domains" :style="{ marginBottom: '10px' }">
                     <a-textarea v-model="genModal.bulkDomains" placeholder="One domain per line" :rows="3"></a-textarea>
-                    <a-button type="primary" icon="upload" @click="genModal.addBulkDomains" :style="{ marginTop: '8px' }">
+                    <a-button type="primary" icon="upload" @click="genModal.addBulkDomains()" :style="{ marginTop: '8px' }">
                         Add All
                     </a-button>
                 </a-card>
@@ -68,7 +100,7 @@
                         </template>
                     </a-list-item>
                 </a-list>
-                <a-popconfirm title="Delete ALL domains?" @confirm="genModal.deleteAllDomains">
+                <a-popconfirm title="Delete ALL domains?" @confirm="genModal.deleteAllDomains()">
                     <a-button type="danger" :style="{ marginTop: '10px' }" block>Delete All Domains</a-button>
                 </a-popconfirm>
             </a-tab-pane>
@@ -83,6 +115,12 @@
         domains: [],
         newDomain: '',
         bulkDomains: '',
+        quickResult: null,
+        quickOpts: {
+            generateInbounds: true,
+            configureDns: true,
+            configureRouting: true,
+        },
         previewColumns: [
             { title: 'Remark', dataIndex: 'remark' },
             { title: 'Protocol', dataIndex: 'protocol', scopedSlots: { customRender: 'protocol' }, width: 120 },
@@ -91,6 +129,7 @@
         show() {
             this.visible = true;
             this.previewData = [];
+            this.quickResult = null;
             this.loadDomains();
         },
         close() { this.visible = false; },
@@ -98,7 +137,9 @@
             this.loading = true;
             const msg = await HttpUtil.post('/panel/api/generator/preview');
             this.loading = false;
-            if (msg.success) this.previewData = msg.obj || [];
+            if (msg.success) {
+                this.previewData = msg.obj || [];
+            }
         },
         async generate() {
             this.loading = true;
@@ -106,8 +147,25 @@
             this.loading = false;
             if (msg.success) {
                 this.close();
-                app.$notification.success({ message: 'Generated ' + (msg.obj ? msg.obj.length : 0) + ' inbounds' });
-                if (typeof app.getDBInbounds === 'function') app.getDBInbounds();
+                Vue.prototype.$message.success('Generated ' + (msg.obj ? msg.obj.length : 0) + ' inbounds successfully!');
+                if (typeof app !== 'undefined' && typeof app.getDBInbounds === 'function') {
+                    app.getDBInbounds();
+                }
+            }
+        },
+        async quickSetup() {
+            this.loading = true;
+            this.quickResult = null;
+            const msg = await HttpUtil.post('/panel/api/generator/quicksetup', this.quickOpts);
+            this.loading = false;
+            if (msg.success) {
+                this.quickResult = { success: true, message: msg.obj || 'Quick setup completed successfully!' };
+                Vue.prototype.$message.success('Quick setup completed!');
+                if (typeof app !== 'undefined' && typeof app.getDBInbounds === 'function') {
+                    app.getDBInbounds();
+                }
+            } else {
+                this.quickResult = { success: false, message: msg.msg || 'Quick setup failed' };
             }
         },
         async loadDomains() {
@@ -152,6 +210,7 @@
 
     new Vue({
         delimiters: ['[[', ']]'],
+        el: '#gen-modal',
         data: { genModal },
     });
 </script>

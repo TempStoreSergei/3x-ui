@@ -109,7 +109,7 @@
                     <a-button icon="thunderbolt" @click="genModal.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
                       <template v-if="!isMobile">Auto Generate</template>
                     </a-button>
-                    <a-button icon="cloud" @click="cfModal.show(allSetting ? allSetting.cloudflareAPIToken : '')" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
+                    <a-button icon="cloud" @click="cfModal.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
                       <template v-if="!isMobile">Cloudflare</template>
                     </a-button>
                     <a-dropdown :trigger="['click']">

@@ -102,6 +102,8 @@ var defaultValueMap = map[string]string{
 	// Cloudflare defaults
 	"cloudflareAPIToken": "",
 	"cloudflareZoneID":   "",
+	// NextDNS defaults
+	"nextDnsProfileId": "",
 }
 
 // SettingService provides business logic for application settings management.
@@ -695,6 +697,15 @@ func (s *SettingService) GetCloudflareZoneID() (string, error) {
 
 func (s *SettingService) SetCloudflareZoneID(zoneID string) error {
 	return s.setString("cloudflareZoneID", zoneID)
+}
+
+// NextDNS settings
+func (s *SettingService) GetNextDNSProfileID() (string, error) {
+	return s.getString("nextDnsProfileId")
+}
+
+func (s *SettingService) SetNextDNSProfileID(profileID string) error {
+	return s.setString("nextDnsProfileId", profileID)
 }
 
 func (s *SettingService) UpdateAllSetting(allSetting *entity.AllSetting) error {

@@ -3,14 +3,14 @@
          :closable="true" :mask-closable="true"
          :footer="null" :class="themeSwitcher.currentTheme"
          width="720px">
-    <a-alert v-if="!cfModal.apiToken" type="warning" :style="{ marginBottom: '10px' }"
+    <a-alert v-if="!cfModal.hasToken" type="warning" :style="{ marginBottom: '10px' }"
         message="Configure Cloudflare API Token in Settings → Cloudflare to enable DNS management." show-icon>
     </a-alert>
     <template v-else>
         <a-spin :spinning="cfModal.loading">
             <a-card size="small" title="DNS Zones" :style="{ marginBottom: '10px' }">
                 <a-select v-model="cfModal.selectedZone" placeholder="Select Zone" :style="{ width: '100%' }"
-                    @change="cfModal.loadRecords">
+                    @change="cfModal.loadRecords()">
                     <a-select-option v-for="z in cfModal.zones" :key="z.id" :value="z.id">
                         [[ z.name ]] ([[ z.status ]])
                     </a-select-option>
@@ -37,7 +37,7 @@
                             </a-switch>
                         </a-col>
                         <a-col :span="3">
-                            <a-button type="primary" icon="plus" @click="cfModal.addRecord">Add</a-button>
+                            <a-button type="primary" icon="plus" @click="cfModal.addRecord()">Add</a-button>
                         </a-col>
                     </a-row>
                 </a-card>
@@ -62,7 +62,7 @@
     const cfModal = {
         visible: false,
         loading: false,
-        apiToken: '',
+        hasToken: false,
         zones: [],
         selectedZone: null,
         records: [],
@@ -74,17 +74,19 @@
             { title: 'Proxied', dataIndex: 'proxied', scopedSlots: { customRender: 'proxied' }, width: 100 },
             { title: '', scopedSlots: { customRender: 'action' }, width: 60 }
         ],
-        show(apiToken) {
+        show() {
             this.visible = true;
-            this.apiToken = apiToken || '';
-            if (this.apiToken) this.loadZones();
+            this.checkToken();
         },
         close() { this.visible = false; },
-        async loadZones() {
-            this.loading = true;
+        async checkToken() {
             const msg = await HttpUtil.get('/panel/api/cloudflare/zones');
-            this.loading = false;
-            if (msg.success) this.zones = msg.obj || [];
+            if (msg.success) {
+                this.hasToken = true;
+                this.zones = msg.obj || [];
+            } else {
+                this.hasToken = false;
+            }
         },
         async loadRecords() {
             if (!this.selectedZone) return;
@@ -113,6 +115,7 @@
 
     new Vue({
         delimiters: ['[[', ']]'],
+        el: '#cf-modal',
         data: { cfModal },
     });
 </script>

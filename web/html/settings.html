@@ -92,11 +92,12 @@
                   <a-tab-pane key="6" :style="{ paddingTop: '20px' }">
                     <template #tab>
                       <a-icon type="cloud"></a-icon>
-                      <span>Cloudflare</span>
+                      <span>Cloudflare & DNS</span>
                     </template>
                     <a-list item-layout="horizontal" :style="{ margin: '0 10px' }">
                       <setting-list-item type="text" title="Cloudflare API Token" desc="API token with DNS edit permissions for Cloudflare zone management" v-model="allSetting.cloudflareAPIToken"></setting-list-item>
-                      <setting-list-item type="text" title="Default Zone ID" desc="Default Cloudflare zone ID for quick operations (optional)" v-model="allSetting.cloudflareZoneID"></setting-list-item>
+                      <setting-list-item type="text" title="Cloudflare Zone ID" desc="Default Cloudflare zone ID for quick operations (optional)" v-model="allSetting.cloudflareZoneID"></setting-list-item>
+                      <setting-list-item type="text" title="NextDNS Profile ID" desc="NextDNS profile ID for DNS-over-HTTPS filtering (e.g. abc123). Get it from https://my.nextdns.io" v-model="allSetting.nextDnsProfileId"></setting-list-item>
                     </a-list>
                   </a-tab-pane>
                 </a-tabs>

@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"strconv"
+
 	"github.com/mhsanaei/3x-ui/v2/web/service"
 
 	"github.com/gin-gonic/gin"
@@ -48,10 +50,18 @@ func (a *CloudflareController) listRecords(c *gin.Context) {
 func (a *CloudflareController) createRecord(c *gin.Context) {
 	zoneID := c.Param("zoneId")
 
-	var record service.CloudflareDNSRecord
-	if err := c.ShouldBindJSON(&record); err != nil {
-		jsonMsg(c, "Invalid request", err)
-		return
+	recordType := c.PostForm("type")
+	name := c.PostForm("name")
+	content := c.PostForm("content")
+	proxied := c.PostForm("proxied") == "true"
+	ttl, _ := strconv.Atoi(c.DefaultPostForm("ttl", "1"))
+
+	record := service.CloudflareDNSRecord{
+		Type:    recordType,
+		Name:    name,
+		Content: content,
+		Proxied: proxied,
+		TTL:     ttl,
 	}
 
 	created, err := a.cfService.CreateDNSRecord(zoneID, record)
