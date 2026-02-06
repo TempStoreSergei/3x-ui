@@ -5,6 +5,11 @@ import 'ant-design-vue/dist/reset.css'
 
 import App from './App.vue'
 import router from './router'
+import { useTheme } from './composables/useTheme'
+
+// Initialize theme before mounting (matches original behavior)
+const { initTheme } = useTheme()
+initTheme()
 
 const app = createApp(App)
 

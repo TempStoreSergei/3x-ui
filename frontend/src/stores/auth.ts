@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(username: string, password: string, loginSecret: string = '') {
     loading.value = true
     try {
-      const res = await api.post<any, ApiResponse>('/login/', { username, password, loginSecret })
+      const res = await api.post<any, ApiResponse>('/login', { username, password, loginSecret })
       if (res.success) {
         isLogin.value = true
         localStorage.setItem('isLogin', 'true')
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await api.post('/logout/')
+      await api.post('/logout')
     } catch {}
     isLogin.value = false
     localStorage.removeItem('isLogin')
