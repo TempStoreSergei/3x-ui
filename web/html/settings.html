@@ -89,6 +89,16 @@
                     </template>
                     {{ template "settings/panel/subscription/json" . }}
                   </a-tab-pane>
+                  <a-tab-pane key="6" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="cloud"></a-icon>
+                      <span>Cloudflare</span>
+                    </template>
+                    <a-list item-layout="horizontal" :style="{ margin: '0 10px' }">
+                      <setting-list-item type="text" title="Cloudflare API Token" desc="API token with DNS edit permissions for Cloudflare zone management" v-model="allSetting.cloudflareAPIToken"></setting-list-item>
+                      <setting-list-item type="text" title="Default Zone ID" desc="Default Cloudflare zone ID for quick operations (optional)" v-model="allSetting.cloudflareZoneID"></setting-list-item>
+                    </a-list>
+                  </a-tab-pane>
                 </a-tabs>
               </a-col>
             </a-row>

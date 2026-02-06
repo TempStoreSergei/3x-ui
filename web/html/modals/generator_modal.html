@@ -1,0 +1,158 @@
+{{define "modals/generatorModal"}}
+<a-modal id="gen-modal" v-model="genModal.visible" title="Inbound Generator"
+         :closable="true" :mask-closable="true"
+         :footer="null" :class="themeSwitcher.currentTheme"
+         width="800px">
+    <a-spin :spinning="genModal.loading">
+        <a-tabs default-active-key="generate">
+            <a-tab-pane key="generate" tab="Generate">
+                <a-alert type="info" :style="{ marginBottom: '10px' }"
+                    message="Generate 10 diverse inbound configurations with different protocols (VLESS, VMess, Shadowsocks, Trojan), transports (TCP, WebSocket, gRPC, XHTTP), and random ports/SNI domains." show-icon>
+                </a-alert>
+                <a-space direction="vertical" :style="{ width: '100%' }">
+                    <a-button type="primary" icon="eye" @click="genModal.preview" block>
+                        Preview Inbounds
+                    </a-button>
+                    <template v-if="genModal.previewData.length > 0">
+                        <a-table :columns="genModal.previewColumns" :data-source="genModal.previewData"
+                            :pagination="false" size="small" row-key="remark">
+                            <template slot="port" slot-scope="text">
+                                <a-tag color="blue">[[ text ]]</a-tag>
+                            </template>
+                            <template slot="protocol" slot-scope="text">
+                                <a-tag :color="text === 'vless' ? 'green' : text === 'vmess' ? 'purple' : text === 'trojan' ? 'orange' : 'cyan'">
+                                    [[ text ]]
+                                </a-tag>
+                            </template>
+                        </a-table>
+                    </template>
+                    <a-popconfirm title="This will create 10 new inbounds. Continue?"
+                        @confirm="genModal.generate">
+                        <a-button type="danger" icon="thunderbolt" block :disabled="genModal.previewData.length === 0">
+                            Generate & Apply Inbounds
+                        </a-button>
+                    </a-popconfirm>
+                </a-space>
+            </a-tab-pane>
+            <a-tab-pane key="domains" tab="SNI Domains">
+                <a-alert type="info" :style="{ marginBottom: '10px' }"
+                    message="Manage the whitelist of SNI domains used for REALITY protocol inbounds." show-icon>
+                </a-alert>
+                <a-card size="small" :style="{ marginBottom: '10px' }">
+                    <a-row :gutter="8">
+                        <a-col :span="16">
+                            <a-input v-model="genModal.newDomain" placeholder="Enter domain (e.g. www.google.com)"
+                                @pressEnter="genModal.addDomain"></a-input>
+                        </a-col>
+                        <a-col :span="4">
+                            <a-button type="primary" icon="plus" @click="genModal.addDomain" block>Add</a-button>
+                        </a-col>
+                        <a-col :span="4">
+                            <a-button icon="reload" @click="genModal.seedDomains" block>Seed</a-button>
+                        </a-col>
+                    </a-row>
+                </a-card>
+                <a-card size="small" title="Bulk Add Domains" :style="{ marginBottom: '10px' }">
+                    <a-textarea v-model="genModal.bulkDomains" placeholder="One domain per line" :rows="3"></a-textarea>
+                    <a-button type="primary" icon="upload" @click="genModal.addBulkDomains" :style="{ marginTop: '8px' }">
+                        Add All
+                    </a-button>
+                </a-card>
+                <a-list size="small" bordered :data-source="genModal.domains">
+                    <a-list-item slot="renderItem" slot-scope="item">
+                        <span>[[ item.name ]]</span>
+                        <template slot="actions">
+                            <a-popconfirm title="Delete?" @confirm="genModal.deleteDomain(item.id)">
+                                <a-button type="danger" size="small" icon="delete"></a-button>
+                            </a-popconfirm>
+                        </template>
+                    </a-list-item>
+                </a-list>
+                <a-popconfirm title="Delete ALL domains?" @confirm="genModal.deleteAllDomains">
+                    <a-button type="danger" :style="{ marginTop: '10px' }" block>Delete All Domains</a-button>
+                </a-popconfirm>
+            </a-tab-pane>
+        </a-tabs>
+    </a-spin>
+</a-modal>
+<script>
+    const genModal = {
+        visible: false,
+        loading: false,
+        previewData: [],
+        domains: [],
+        newDomain: '',
+        bulkDomains: '',
+        previewColumns: [
+            { title: 'Remark', dataIndex: 'remark' },
+            { title: 'Protocol', dataIndex: 'protocol', scopedSlots: { customRender: 'protocol' }, width: 120 },
+            { title: 'Port', dataIndex: 'port', scopedSlots: { customRender: 'port' }, width: 80 },
+        ],
+        show() {
+            this.visible = true;
+            this.previewData = [];
+            this.loadDomains();
+        },
+        close() { this.visible = false; },
+        async preview() {
+            this.loading = true;
+            const msg = await HttpUtil.post('/panel/api/generator/preview');
+            this.loading = false;
+            if (msg.success) this.previewData = msg.obj || [];
+        },
+        async generate() {
+            this.loading = true;
+            const msg = await HttpUtil.post('/panel/api/generator/generate');
+            this.loading = false;
+            if (msg.success) {
+                this.close();
+                app.$notification.success({ message: 'Generated ' + (msg.obj ? msg.obj.length : 0) + ' inbounds' });
+                if (typeof app.getDBInbounds === 'function') app.getDBInbounds();
+            }
+        },
+        async loadDomains() {
+            const msg = await HttpUtil.get('/panel/api/generator/domains');
+            if (msg.success) this.domains = msg.obj || [];
+        },
+        async addDomain() {
+            if (!this.newDomain) return;
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/add', { name: this.newDomain });
+            this.newDomain = '';
+            this.loading = false;
+            this.loadDomains();
+        },
+        async addBulkDomains() {
+            if (!this.bulkDomains) return;
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/addBulk', { names: this.bulkDomains });
+            this.bulkDomains = '';
+            this.loading = false;
+            this.loadDomains();
+        },
+        async deleteDomain(id) {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/delete/' + id);
+            this.loading = false;
+            this.loadDomains();
+        },
+        async deleteAllDomains() {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/deleteAll');
+            this.loading = false;
+            this.loadDomains();
+        },
+        async seedDomains() {
+            this.loading = true;
+            await HttpUtil.post('/panel/api/generator/domains/seed');
+            this.loading = false;
+            this.loadDomains();
+        }
+    };
+
+    new Vue({
+        delimiters: ['[[', ']]'],
+        data: { genModal },
+    });
+</script>
+{{end}}

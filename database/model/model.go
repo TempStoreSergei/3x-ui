@@ -104,6 +104,13 @@ type Setting struct {
 	Value string `json:"value" form:"value"`
 }
 
+// SniDomain stores SNI domain whitelist entries for inbound auto-generation.
+type SniDomain struct {
+	Id      int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	Name    string `json:"name" gorm:"unique"`
+	Enabled bool   `json:"enabled" gorm:"default:true"`
+}
+
 // Client represents a client configuration for Xray inbounds with traffic limits and settings.
 type Client struct {
 	ID         string `json:"id"`                           // Unique client identifier
