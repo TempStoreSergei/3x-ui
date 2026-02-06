@@ -133,12 +133,20 @@ func (s *SniDomainService) SeedDefaultDomains() error {
 
 func randomHex(n int) string {
 	bytes := make([]byte, n)
-	_, _ = rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to a fixed value if crypto/rand fails
+		for i := range bytes {
+			bytes[i] = byte(i)
+		}
+	}
 	return hex.EncodeToString(bytes)
 }
 
 func randomPort(min, max int) int {
-	n, _ := rand.Int(rand.Reader, big.NewInt(int64(max-min)))
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(max-min)))
+	if err != nil {
+		return min
+	}
 	return int(n.Int64()) + min
 }
 
@@ -155,7 +163,10 @@ func pickDomain(domains []model.SniDomain) string {
 	if len(enabled) == 0 {
 		return domains[0].Name
 	}
-	n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(enabled))))
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(enabled))))
+	if err != nil {
+		return enabled[0].Name
+	}
 	return enabled[n.Int64()].Name
 }
 

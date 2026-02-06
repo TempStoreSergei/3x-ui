@@ -145,11 +145,20 @@ func (s *CloudflareService) ListDNSRecords(zoneID string) ([]CloudflareDNSRecord
 
 // CreateDNSRecord creates a new DNS record in the specified zone.
 func (s *CloudflareService) CreateDNSRecord(zoneID string, record CloudflareDNSRecord) (*CloudflareDNSRecord, error) {
-	body := fmt.Sprintf(`{"type":"%s","name":"%s","content":"%s","ttl":%d,"proxied":%t}`,
-		record.Type, record.Name, record.Content, record.TTL, record.Proxied)
+	payload := map[string]any{
+		"type":    record.Type,
+		"name":    record.Name,
+		"content": record.Content,
+		"ttl":     record.TTL,
+		"proxied": record.Proxied,
+	}
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
 
 	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records", zoneID)
-	data, err := s.doRequest("POST", url, strings.NewReader(body))
+	data, err := s.doRequest("POST", url, strings.NewReader(string(bodyBytes)))
 	if err != nil {
 		return nil, err
 	}
