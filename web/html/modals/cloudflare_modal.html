@@ -1,65 +1,80 @@
 {{define "modals/cloudflareModal"}}
-<a-modal id="cf-modal" v-model="cfModal.visible" title="Cloudflare DNS"
-         :closable="true" :mask-closable="true"
-         :footer="null" :class="themeSwitcher.currentTheme"
-         width="720px">
-    <a-alert v-if="!cfModal.hasToken" type="warning" :style="{ marginBottom: '10px' }"
-        message="Configure Cloudflare API Token in Settings → Cloudflare to enable DNS management." show-icon>
-    </a-alert>
-    <template v-else>
-        <a-spin :spinning="cfModal.loading">
-            <a-card size="small" title="DNS Zones" :style="{ marginBottom: '10px' }">
-                <a-select v-model="cfModal.selectedZone" placeholder="Select Zone" :style="{ width: '100%' }"
-                    @change="cfModal.loadRecords()">
-                    <a-select-option v-for="z in cfModal.zones" :key="z.id" :value="z.id">
-                        [[ z.name ]] ([[ z.status ]])
-                    </a-select-option>
-                </a-select>
-            </a-card>
-            <template v-if="cfModal.selectedZone">
-                <a-card size="small" title="Add DNS Record" :style="{ marginBottom: '10px' }">
-                    <a-row :gutter="8">
-                        <a-col :span="4">
-                            <a-select v-model="cfModal.newRecord.type" :style="{ width: '100%' }">
+<div id="cf-panel">
+    <!-- Cloudflare DNS Section - shown inline as collapsible card -->
+    <a-card v-if="cfPanel.visible" :style="{ marginBottom: '12px' }" size="small">
+        <template #title>
+            <a-space>
+                <a-icon type="cloud" :style="{ color: '#f5a623' }"></a-icon>
+                <span>Cloudflare DNS Management</span>
+            </a-space>
+        </template>
+        <template #extra>
+            <a-button size="small" icon="close" @click="cfPanel.close()"></a-button>
+        </template>
+        <a-spin :spinning="cfPanel.loading">
+            <template v-if="!cfPanel.hasToken">
+                <a-result status="info" title="Cloudflare Not Configured"
+                    sub-title="Add your Cloudflare API Token in Settings → Cloudflare & DNS to manage DNS records.">
+                    <template #extra>
+                        <a-button type="primary" @click="window.location.href=basePath+'panel/settings'">
+                            <a-icon type="setting"></a-icon> Go to Settings
+                        </a-button>
+                    </template>
+                </a-result>
+            </template>
+            <template v-else>
+                <a-row :gutter="[16, 12]">
+                    <a-col :xs="24" :md="8">
+                        <a-select v-model="cfPanel.selectedZone" placeholder="Select DNS Zone" :style="{ width: '100%' }"
+                            @change="cfPanel.loadRecords()">
+                            <a-select-option v-for="z in cfPanel.zones" :key="z.id" :value="z.id">
+                                [[ z.name ]] ([[ z.status ]])
+                            </a-select-option>
+                        </a-select>
+                    </a-col>
+                    <template v-if="cfPanel.selectedZone">
+                        <a-col :xs="6" :md="3">
+                            <a-select v-model="cfPanel.newRecord.type" :style="{ width: '100%' }">
                                 <a-select-option value="A">A</a-select-option>
                                 <a-select-option value="AAAA">AAAA</a-select-option>
                                 <a-select-option value="CNAME">CNAME</a-select-option>
                             </a-select>
                         </a-col>
-                        <a-col :span="7">
-                            <a-input v-model="cfModal.newRecord.name" placeholder="Name (e.g. sub)"></a-input>
+                        <a-col :xs="18" :md="5">
+                            <a-input v-model="cfPanel.newRecord.name" placeholder="Name (sub)"></a-input>
                         </a-col>
-                        <a-col :span="7">
-                            <a-input v-model="cfModal.newRecord.content" placeholder="Content (IP/domain)"></a-input>
+                        <a-col :xs="16" :md="5">
+                            <a-input v-model="cfPanel.newRecord.content" placeholder="IP / domain"></a-input>
                         </a-col>
-                        <a-col :span="3">
-                            <a-switch v-model="cfModal.newRecord.proxied" checked-children="CDN" un-checked-children="DNS">
-                            </a-switch>
+                        <a-col :xs="4" :md="1">
+                            <a-tooltip :title="cfPanel.newRecord.proxied ? 'Proxied (CDN)' : 'DNS Only'">
+                                <a-switch v-model="cfPanel.newRecord.proxied" size="small"></a-switch>
+                            </a-tooltip>
                         </a-col>
-                        <a-col :span="3">
-                            <a-button type="primary" icon="plus" @click="cfModal.addRecord()">Add</a-button>
+                        <a-col :xs="4" :md="2">
+                            <a-button type="primary" icon="plus" @click="cfPanel.addRecord()" block></a-button>
                         </a-col>
-                    </a-row>
-                </a-card>
-                <a-card size="small" title="DNS Records">
-                    <a-table :columns="cfModal.columns" :data-source="cfModal.records"
-                        :pagination="{ pageSize: 10 }" size="small" row-key="id">
-                        <template slot="proxied" slot-scope="text">
-                            <a-tag :color="text ? 'orange' : 'blue'">[[ text ? 'Proxied' : 'DNS Only' ]]</a-tag>
-                        </template>
-                        <template slot="action" slot-scope="text, record">
-                            <a-popconfirm title="Delete this record?" @confirm="cfModal.deleteRecord(record.id)">
-                                <a-button type="danger" size="small" icon="delete"></a-button>
-                            </a-popconfirm>
-                        </template>
-                    </a-table>
-                </a-card>
+                    </template>
+                    <a-col :span="24" v-if="cfPanel.selectedZone">
+                        <a-table :columns="cfPanel.columns" :data-source="cfPanel.records"
+                            :pagination="{ pageSize: 8, size: 'small' }" size="small" row-key="id" bordered>
+                            <template slot="proxied" slot-scope="text">
+                                <a-tag :color="text ? 'orange' : 'blue'" size="small">[[ text ? 'CDN' : 'DNS' ]]</a-tag>
+                            </template>
+                            <template slot="action" slot-scope="text, record">
+                                <a-popconfirm title="Delete?" @confirm="cfPanel.deleteRecord(record.id)">
+                                    <a-button type="link" size="small" icon="delete" :style="{ color: '#ff4d4f' }"></a-button>
+                                </a-popconfirm>
+                            </template>
+                        </a-table>
+                    </a-col>
+                </a-row>
             </template>
         </a-spin>
-    </template>
-</a-modal>
+    </a-card>
+</div>
 <script>
-    const cfModal = {
+    const cfPanel = {
         visible: false,
         loading: false,
         hasToken: false,
@@ -68,11 +83,11 @@
         records: [],
         newRecord: { type: 'A', name: '', content: '', proxied: false, ttl: 1 },
         columns: [
-            { title: 'Type', dataIndex: 'type', width: 70 },
+            { title: 'Type', dataIndex: 'type', width: 60 },
             { title: 'Name', dataIndex: 'name' },
             { title: 'Content', dataIndex: 'content' },
-            { title: 'Proxied', dataIndex: 'proxied', scopedSlots: { customRender: 'proxied' }, width: 100 },
-            { title: '', scopedSlots: { customRender: 'action' }, width: 60 }
+            { title: 'Proxy', dataIndex: 'proxied', scopedSlots: { customRender: 'proxied' }, width: 60 },
+            { title: '', scopedSlots: { customRender: 'action' }, width: 40 }
         ],
         show() {
             this.visible = true;
@@ -80,7 +95,9 @@
         },
         close() { this.visible = false; },
         async checkToken() {
+            this.loading = true;
             const msg = await HttpUtil.get('/panel/api/cloudflare/zones');
+            this.loading = false;
             if (msg.success) {
                 this.hasToken = true;
                 this.zones = msg.obj || [];
@@ -115,8 +132,8 @@
 
     new Vue({
         delimiters: ['[[', ']]'],
-        el: '#cf-modal',
-        data: { cfModal },
+        el: '#cf-panel',
+        data: { cfPanel },
     });
 </script>
 {{end}}

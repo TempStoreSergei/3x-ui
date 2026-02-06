@@ -99,15 +99,18 @@
                 </a-row>
               </a-card>
             </a-col>
+            <!-- Inline panels (no more modals!) -->
+            {{template "modals/generatorModal"}}
+            {{template "modals/cloudflareModal"}}
             <a-col>
               <a-card hoverable>
                 <template #title>
                   <a-space direction="horizontal">
                     <template v-if="isSimpleMode">
-                      <a-button type="primary" icon="thunderbolt" @click="genModal.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
+                      <a-button type="primary" icon="thunderbolt" @click="genPanel.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
                         <template v-if="!isMobile">⚡ Quick Setup</template>
                       </a-button>
-                      <a-button icon="cloud" @click="cfModal.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
+                      <a-button icon="cloud" @click="cfPanel.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
                         <template v-if="!isMobile">Cloudflare</template>
                       </a-button>
                     </template>
@@ -115,10 +118,10 @@
                       <a-button type="primary" icon="plus" @click="openAddInbound">
                         <template v-if="!isMobile">{{ i18n "pages.inbounds.addInbound" }}</template>
                       </a-button>
-                      <a-button icon="thunderbolt" @click="genModal.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
+                      <a-button icon="thunderbolt" @click="genPanel.show()" :style="{ background: '#722ed1', borderColor: '#722ed1', color: '#fff' }">
                         <template v-if="!isMobile">Auto Generate</template>
                       </a-button>
-                      <a-button icon="cloud" @click="cfModal.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
+                      <a-button icon="cloud" @click="cfPanel.show()" :style="{ background: '#f5a623', borderColor: '#f5a623', color: '#fff' }">
                         <template v-if="!isMobile">Cloudflare</template>
                       </a-button>
                       <a-dropdown :trigger="['click']">
@@ -629,8 +632,6 @@
 {{template "modals/inboundInfoModal"}}
 {{template "modals/clientsModal"}}
 {{template "modals/clientsBulkModal"}}
-{{template "modals/generatorModal"}}
-{{template "modals/cloudflareModal"}}
 <script>
   const columns = [{
     title: "ID",

@@ -94,11 +94,39 @@
                       <a-icon type="cloud"></a-icon>
                       <span>Cloudflare & DNS</span>
                     </template>
-                    <a-list item-layout="horizontal" :style="{ margin: '0 10px' }">
-                      <setting-list-item type="text" title="Cloudflare API Token" desc="API token with DNS edit permissions for Cloudflare zone management" v-model="allSetting.cloudflareAPIToken"></setting-list-item>
-                      <setting-list-item type="text" title="Cloudflare Zone ID" desc="Default Cloudflare zone ID for quick operations (optional)" v-model="allSetting.cloudflareZoneID"></setting-list-item>
-                      <setting-list-item type="text" title="NextDNS Profile ID" desc="NextDNS profile ID for DNS-over-HTTPS filtering (e.g. abc123). Get it from https://my.nextdns.io" v-model="allSetting.nextDnsProfileId"></setting-list-item>
-                    </a-list>
+                    <a-collapse default-active-key="1">
+                      <a-collapse-panel key="1" header="Cloudflare API">
+                        <a-setting-list-item paddings="small">
+                          <template #title>Cloudflare API Token</template>
+                          <template #description>API token with DNS edit permissions. Get it from <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare Dashboard</a></template>
+                          <template #control>
+                            <a-input-password v-model="allSetting.cloudflareAPIToken" placeholder="Enter API token"></a-input-password>
+                          </template>
+                        </a-setting-list-item>
+                        <a-setting-list-item paddings="small">
+                          <template #title>Default Zone ID</template>
+                          <template #description>Default Cloudflare zone ID for quick operations (optional)</template>
+                          <template #control>
+                            <a-input v-model="allSetting.cloudflareZoneID" placeholder="Zone ID"></a-input>
+                          </template>
+                        </a-setting-list-item>
+                      </a-collapse-panel>
+                      <a-collapse-panel key="2" header="NextDNS">
+                        <a-setting-list-item paddings="small">
+                          <template #title>NextDNS Profile ID</template>
+                          <template #description>DNS-over-HTTPS profile for ad-blocking and privacy. Get it from <a href="https://my.nextdns.io" target="_blank">my.nextdns.io</a></template>
+                          <template #control>
+                            <a-input v-model="allSetting.nextDnsProfileId" placeholder="e.g. abc123"></a-input>
+                          </template>
+                        </a-setting-list-item>
+                      </a-collapse-panel>
+                      <a-collapse-panel key="3" header="Quick Help">
+                        <a-alert type="info" show-icon
+                          message="How to use Cloudflare & DNS"
+                          description="1. Get a Cloudflare API Token from your dashboard (DNS Edit permission). 2. Paste it above and save settings. 3. Go to Inbounds page → click Cloudflare button to manage DNS records. 4. For NextDNS: create a profile at my.nextdns.io and paste the profile ID. 5. Run Quick Setup from Inbounds page to auto-configure everything.">
+                        </a-alert>
+                      </a-collapse-panel>
+                    </a-collapse>
                   </a-tab-pane>
                 </a-tabs>
               </a-col>
@@ -247,6 +275,19 @@
     methods: {
       loading(spinning = true) {
         this.loadingStates.spinning = spinning;
+      },
+      openTgBot() {
+        const token = this.allSetting.tgBotToken;
+        if (!token) {
+          this.$message.warning('Please enter a bot token first');
+          return;
+        }
+        // Extract bot username from token format: 123456:ABC-DEF...
+        // Bot username can be retrieved by opening the bot via its token
+        const botId = token.split(':')[0];
+        if (botId) {
+          window.open('https://t.me/bot' + botId, '_blank');
+        }
       },
       _isIp(h) {
         if (typeof h !== "string") return false;
