@@ -15,6 +15,7 @@ tmp/
 backup/
 bin/
 dist/
+!web/dist/
 release/
 node_modules/
 
