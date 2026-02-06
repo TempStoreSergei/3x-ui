@@ -282,12 +282,20 @@
           this.$message.warning('Please enter a bot token first');
           return;
         }
-        // Extract bot username from token format: 123456:ABC-DEF...
-        // Bot username can be retrieved by opening the bot via its token
-        const botId = token.split(':')[0];
-        if (botId) {
-          window.open('https://t.me/bot' + botId, '_blank');
-        }
+        // Use Telegram's getMe API to find the bot username, then open it
+        const apiUrl = 'https://api.telegram.org/bot' + token + '/getMe';
+        fetch(apiUrl)
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok && data.result && data.result.username) {
+              window.open('https://t.me/' + data.result.username, '_blank');
+            } else {
+              this.$message.error('Invalid bot token. Please check and try again.');
+            }
+          })
+          .catch(() => {
+            this.$message.error('Could not connect to Telegram API. Check the token.');
+          });
       },
       _isIp(h) {
         if (typeof h !== "string") return false;
